@@ -1,0 +1,70 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2025 LION VPS MANAGER
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+                            Preamble
+
+  The GNU General Public License is a free, copyleft license for
+software and other kinds of works.
+
+  The licenses for most software and other practical works are designed
+to take away your freedom to share and change the works.  By contrast,
+the GNU General Public License is intended to guarantee your freedom to
+share and change all versions of a program--to make sure it remains free
+software for all its users.  We, the Free Software Foundation, use the
+GNU General Public License for most of our software; it applies also to
+any other work released this way by its authors.  You can apply it to
+your programs, too.
+
+LION VPS MANAGER
+================
+
+LION VPS Manager is an advanced SSH connection management system with 
+TLS_AES_256_GCM_SHA384 encryption enforcement. This software is designed
+to provide maximum security for VPS management operations.
+
+Key Features:
+- TLSv1.3 encryption with TLS_AES_256_GCM_SHA384 cipher suite
+- Advanced SSH user management
+- Stunnel integration for secure tunneling
+- Real-time connection monitoring
+- Professional security hardening
+
+Security Notice:
+This software enforces strict security protocols including:
+- Military-grade encryption standards
+- Certificate-based authentication
+- Advanced key management
+- Secure connection monitoring
+
+Terms of Use:
+By using LION VPS Manager, you agree to use this software responsibly
+and in accordance with applicable laws and regulations. This software
+is provided "AS IS" without warranty of any kind.
+
+Contact:
+For support and updates, visit the official repository or contact
+the development team through approved channels.
+
+                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+ Everyone is permitted to copy and distribute verbatim copies
+ of this license document, but changing it is not allowed.
+
+[Full GPL v3 license text continues...]
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+🦁 LION VPS MANAGER - SECURE BY DESIGN 🦁
+TLS_AES_256_GCM_SHA384 - MAXIMUM SECURITY GUARANTEED

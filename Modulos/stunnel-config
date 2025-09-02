@@ -1,0 +1,295 @@
+#!/bin/bash
+
+# LION VPS Manager - Stunnel TLS Configuration
+# TLS_AES_256_GCM_SHA384 Cipher Suite Configuration
+
+cor1='\033[1;36m' # Cyan
+cor2='\033[1;33m' # Yellow  
+cor3='\033[1;31m' # Red
+cor4='\033[1;32m' # Green
+cor5='\033[1;37m' # White
+sem='\033[0m'     # Reset
+
+clear
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor1}🦁           STUNNEL TLS CONFIGURATION - LION            🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+
+# Check if running as root
+if [ "$(id -u)" != "0" ]; then
+    echo -e "${cor3}❌ This script must be run as root!${sem}"
+    exit 1
+fi
+
+# Create necessary directories
+mkdir -p /etc/stunnel
+mkdir -p /var/log/lion
+mkdir -p /etc/lion/sistema
+
+echo -e "${cor2}🔧 STUNNEL TLS_AES_256_GCM_SHA384 Configuration${sem}"
+echo ""
+
+# Configuration options
+echo -e "${cor2}🔒 Select Configuration Mode:${sem}"
+echo -e "${cor3}[1]${cor5} Quick Setup (Recommended)${sem}"
+echo -e "${cor3}[2]${cor5} Advanced Setup${sem}"
+echo -e "${cor3}[3]${cor5} View Current Configuration${sem}"
+echo -e "${cor3}[4]${cor5} Reset Configuration${sem}"
+echo ""
+echo -ne "${cor2}🦁 Select option [1-4]: ${cor5}"
+read config_mode
+
+case "$config_mode" in
+    1)
+        echo ""
+        echo -e "${cor2}🚀 Quick Setup - TLS_AES_256_GCM_SHA384${sem}"
+        echo -e "${cor2}🔄 Configuring Stunnel with default secure settings...${sem}"
+        
+        # Generate certificate if it doesn't exist
+        if [ ! -f "/etc/stunnel/lion.pem" ]; then
+            echo -e "${cor2}🔐 Generating TLS certificate...${sem}"
+            openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+                -subj "/C=US/ST=Security/L=TLS/O=LION-VPS/CN=lion-manager" \
+                -keyout /etc/stunnel/lion.key \
+                -out /etc/stunnel/lion.pem 2>/dev/null
+            
+            chmod 600 /etc/stunnel/lion.key
+            chmod 644 /etc/stunnel/lion.pem
+            echo -e "${cor4}✅ Certificate generated successfully!${sem}"
+        fi
+        
+        # Create Stunnel configuration
+        cat > /etc/stunnel/lion.conf << 'EOF'
+; LION VPS Manager - Stunnel Configuration
+; TLS_AES_256_GCM_SHA384 Cipher Suite Enforcement
+
+pid = /var/run/stunnel-lion.pid
+output = /var/log/lion/stunnel.log
+
+; Force TLSv1.3 only with specific cipher
+sslVersion = TLSv1.3
+ciphersuites = TLS_AES_256_GCM_SHA384
+
+; Disable all older protocols
+options = -NO_SSLv2
+options = -NO_SSLv3
+options = -NO_TLSv1
+options = -NO_TLSv1.1
+options = -NO_TLSv1.2
+
+; Enhanced security options
+options = -NO_COMPRESSION
+options = -CIPHER_SERVER_PREFERENCE
+options = -SINGLE_DH_USE
+options = -SINGLE_ECDH_USE
+options = -NO_RENEGOTIATION
+
+; Certificate verification
+verify = 2
+CAfile = /etc/ssl/certs/ca-certificates.crt
+
+; Service definitions
+[lion-ssh]
+accept = 9443
+connect = 127.0.0.1:22
+cert = /etc/stunnel/lion.pem
+key = /etc/stunnel/lion.key
+
+[lion-proxy]
+accept = 8443
+connect = 127.0.0.1:3128
+cert = /etc/stunnel/lion.pem
+key = /etc/stunnel/lion.key
+
+[lion-openvpn]
+accept = 7443
+connect = 127.0.0.1:1194
+cert = /etc/stunnel/lion.pem
+key = /etc/stunnel/lion.key
+EOF
+        
+        echo -e "${cor4}✅ Stunnel configuration created!${sem}"
+        echo -e "${cor2}📁 Config location: /etc/stunnel/lion.conf${sem}"
+        
+        # Save configuration info
+        echo "TLS_AES_256_GCM_SHA384" > /etc/lion/sistema/cipher
+        echo "$(date)" > /etc/lion/sistema/last_config
+        
+        ;;
+        
+    2)
+        echo ""
+        echo -e "${cor2}🔧 Advanced Setup${sem}"
+        echo ""
+        
+        # SSH Port configuration
+        echo -ne "${cor2}🔌 SSH Port (default: 22): ${cor5}"
+        read ssh_port
+        ssh_port=${ssh_port:-22}
+        
+        # TLS Port configuration
+        echo -ne "${cor2}🔒 TLS Port (default: 9443): ${cor5}"
+        read tls_port
+        tls_port=${tls_port:-9443}
+        
+        # Proxy Port configuration
+        echo -ne "${cor2}🌐 Proxy TLS Port (default: 8443): ${cor5}"
+        read proxy_port
+        proxy_port=${proxy_port:-8443}
+        
+        # Certificate path
+        echo -ne "${cor2}🔐 Certificate path (default: /etc/stunnel/lion.pem): ${cor5}"
+        read cert_path
+        cert_path=${cert_path:-/etc/stunnel/lion.pem}
+        
+        # Generate certificate if needed
+        if [ ! -f "$cert_path" ]; then
+            echo -e "${cor2}🔐 Generating new certificate...${sem}"
+            cert_dir=$(dirname "$cert_path")
+            mkdir -p "$cert_dir"
+            
+            openssl req -new -newkey rsa:4096 -days 365 -nodes -x509 \
+                -subj "/C=US/ST=Security/L=TLS/O=LION-VPS/CN=$(hostname)" \
+                -keyout "${cert_path%.*}.key" \
+                -out "$cert_path" 2>/dev/null
+            
+            chmod 600 "${cert_path%.*}.key"
+            chmod 644 "$cert_path"
+        fi
+        
+        # Create advanced configuration
+        cat > /etc/stunnel/lion.conf << EOF
+; LION VPS Manager - Advanced Stunnel Configuration
+; TLS_AES_256_GCM_SHA384 Cipher Suite Enforcement
+
+pid = /var/run/stunnel-lion.pid
+output = /var/log/lion/stunnel.log
+debug = 4
+
+; TLSv1.3 with AES-256-GCM
+sslVersion = TLSv1.3
+ciphersuites = TLS_AES_256_GCM_SHA384
+
+; Security hardening
+options = -NO_SSLv2
+options = -NO_SSLv3
+options = -NO_TLSv1
+options = -NO_TLSv1.1
+options = -NO_TLSv1.2
+options = -NO_COMPRESSION
+options = -CIPHER_SERVER_PREFERENCE
+options = -SINGLE_DH_USE
+options = -SINGLE_ECDH_USE
+options = -NO_RENEGOTIATION
+
+; Certificate verification
+verify = 2
+CAfile = /etc/ssl/certs/ca-certificates.crt
+
+[lion-ssh]
+accept = $tls_port
+connect = 127.0.0.1:$ssh_port
+cert = $cert_path
+key = ${cert_path%.*}.key
+
+[lion-proxy]
+accept = $proxy_port
+connect = 127.0.0.1:3128
+cert = $cert_path
+key = ${cert_path%.*}.key
+EOF
+        
+        echo -e "${cor4}✅ Advanced configuration created!${sem}"
+        
+        ;;
+        
+    3)
+        echo ""
+        echo -e "${cor2}📋 Current Stunnel Configuration${sem}"
+        echo ""
+        
+        if [ -f "/etc/stunnel/lion.conf" ]; then
+            echo -e "${cor4}📁 Configuration file: /etc/stunnel/lion.conf${sem}"
+            echo ""
+            cat /etc/stunnel/lion.conf
+        else
+            echo -e "${cor3}❌ No configuration file found!${sem}"
+        fi
+        
+        echo ""
+        echo -e "${cor2}🔍 Service Status:${sem}"
+        systemctl status stunnel4 2>/dev/null || service stunnel4 status 2>/dev/null || echo "Stunnel not running"
+        
+        ;;
+        
+    4)
+        echo ""
+        echo -e "${cor3}⚠️ Reset Configuration${sem}"
+        echo -ne "${cor2}🦁 Are you sure? This will remove all settings [y/N]: ${cor5}"
+        read confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            rm -f /etc/stunnel/lion.conf
+            rm -f /etc/stunnel/lion.pem
+            rm -f /etc/stunnel/lion.key
+            echo -e "${cor4}✅ Configuration reset!${sem}"
+        else
+            echo -e "${cor2}❌ Reset cancelled.${sem}"
+        fi
+        
+        ;;
+        
+    *)
+        echo -e "${cor3}❌ Invalid option!${sem}"
+        ;;
+esac
+
+if [ "$config_mode" = "1" ] || [ "$config_mode" = "2" ]; then
+    echo ""
+    echo -e "${cor2}🚀 Service Management:${sem}"
+    echo -e "${cor3}[1]${cor5} Start Stunnel now${sem}"
+    echo -e "${cor3}[2]${cor5} Enable auto-start on boot${sem}"
+    echo -e "${cor3}[3]${cor5} Both${sem}"
+    echo -e "${cor3}[4]${cor5} Skip${sem}"
+    echo ""
+    echo -ne "${cor2}🦁 Select option [1-4]: ${cor5}"
+    read service_option
+    
+    case "$service_option" in
+        1|3)
+            echo -e "${cor2}🔄 Starting Stunnel service...${sem}"
+            systemctl start stunnel4 2>/dev/null || service stunnel4 start 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${cor4}✅ Stunnel started successfully!${sem}"
+            else
+                echo -e "${cor3}❌ Failed to start Stunnel!${sem}"
+            fi
+            ;;
+    esac
+    
+    case "$service_option" in
+        2|3)
+            echo -e "${cor2}🔄 Enabling auto-start...${sem}"
+            systemctl enable stunnel4 2>/dev/null || update-rc.d stunnel4 enable 2>/dev/null
+            echo -e "${cor4}✅ Auto-start enabled!${sem}"
+            ;;
+    esac
+    
+    echo ""
+    echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+    echo -e "${cor4}🎉 STUNNEL TLS_AES_256_GCM_SHA384 CONFIGURED! 🎉${sem}"
+    echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+    echo ""
+    echo -e "${cor2}🔗 TLS Connection Details:${sem}"
+    echo -e "${cor2}🌐 Server: ${cor5}$(wget -qO- ipv4.icanhazip.com)${sem}"
+    echo -e "${cor2}🔒 TLS SSH Port: ${cor5}${tls_port:-9443}${sem}"
+    echo -e "${cor2}🌐 TLS Proxy Port: ${cor5}${proxy_port:-8443}${sem}"
+    echo -e "${cor2}🔐 Cipher Suite: ${cor5}TLS_AES_256_GCM_SHA384${sem}"
+    echo -e "${cor2}📁 Certificate: ${cor5}${cert_path:-/etc/stunnel/lion.pem}${sem}"
+    echo ""
+fi
+
+echo ""
+echo -ne "${cor2}🦁 Press Enter to return to menu...${sem}"
+read

@@ -1,0 +1,250 @@
+#!/bin/bash
+
+# LION VPS Manager - Connection Monitor
+# Real-time SSH and TLS connection monitoring
+
+cor1='\033[1;36m' # Cyan
+cor2='\033[1;33m' # Yellow  
+cor3='\033[1;31m' # Red
+cor4='\033[1;32m' # Green
+cor5='\033[1;37m' # White
+sem='\033[0m'     # Reset
+
+clear
+
+# Function to get active SSH connections
+get_ssh_connections() {
+    who | wc -l
+}
+
+# Function to get TLS connections via Stunnel
+get_tls_connections() {
+    netstat -tnlp 2>/dev/null | grep ":9443\|:8443\|:7443" | wc -l
+}
+
+# Function to get detailed user connections
+get_user_details() {
+    echo -e "${cor2}👥 Active SSH Sessions:${sem}"
+    echo ""
+    printf "${cor2}%-15s %-15s %-20s %-15s${sem}\n" "USER" "TTY" "LOGIN TIME" "FROM"
+    echo -e "${cor2}────────────────────────────────────────────────────────────────${sem}"
+    
+    who | while read user tty date time from; do
+        printf "${cor5}%-15s %-15s %-20s %-15s${sem}\n" "$user" "$tty" "$date $time" "$from"
+    done
+}
+
+# Function to get network statistics
+get_network_stats() {
+    echo -e "${cor2}🌐 Network Connection Statistics:${sem}"
+    echo ""
+    
+    # SSH connections
+    ssh_count=$(netstat -tn 2>/dev/null | grep ":22 " | wc -l)
+    echo -e "${cor2}🔌 SSH Port 22: ${cor5}$ssh_count connections${sem}"
+    
+    # TLS connections
+    tls_ssh=$(netstat -tn 2>/dev/null | grep ":9443 " | wc -l)
+    tls_proxy=$(netstat -tn 2>/dev/null | grep ":8443 " | wc -l)
+    tls_vpn=$(netstat -tn 2>/dev/null | grep ":7443 " | wc -l)
+    
+    echo -e "${cor2}🔒 TLS SSH (9443): ${cor5}$tls_ssh connections${sem}"
+    echo -e "${cor2}🌐 TLS Proxy (8443): ${cor5}$tls_proxy connections${sem}"
+    echo -e "${cor2}🔐 TLS VPN (7443): ${cor5}$tls_vpn connections${sem}"
+    
+    total_tls=$((tls_ssh + tls_proxy + tls_vpn))
+    echo -e "${cor4}🦁 Total TLS Connections: ${cor5}$total_tls${sem}"
+}
+
+# Function to monitor users from database
+monitor_users() {
+    echo -e "${cor2}📊 User Limit Monitoring:${sem}"
+    echo ""
+    
+    if [ -f "/root/usuarios.db" ]; then
+        printf "${cor2}%-15s %-10s %-15s %-15s${sem}\n" "USER" "LIMIT" "ACTIVE" "STATUS"
+        echo -e "${cor2}─────────────────────────────────────────────────────────${sem}"
+        
+        while read user limit; do
+            active=$(ps aux | grep "sshd.*$user" | grep -v grep | wc -l)
+            
+            if [ "$active" -le "$limit" ]; then
+                status="${cor4}OK${sem}"
+            else
+                status="${cor3}OVER${sem}"
+            fi
+            
+            printf "${cor5}%-15s ${cor2}%-10s ${cor5}%-15s %-15s${sem}\n" "$user" "$limit" "$active" "$status"
+            
+        done < /root/usuarios.db
+    else
+        echo -e "${cor3}❌ User database not found!${sem}"
+    fi
+}
+
+# Function to show process information
+show_processes() {
+    echo -e "${cor2}⚙️ SSH Related Processes:${sem}"
+    echo ""
+    
+    # SSH daemon
+    sshd_count=$(ps aux | grep "sshd" | grep -v grep | wc -l)
+    echo -e "${cor2}🔌 SSHD processes: ${cor5}$sshd_count${sem}"
+    
+    # Stunnel processes
+    stunnel_count=$(ps aux | grep "stunnel" | grep -v grep | wc -l)
+    echo -e "${cor2}🔒 Stunnel processes: ${cor5}$stunnel_count${sem}"
+    
+    # Show active connections with details
+    echo ""
+    echo -e "${cor2}🔍 Detailed SSH Connections:${sem}"
+    ps aux | grep "sshd.*@" | grep -v grep | while read line; do
+        echo -e "${cor5}$line${sem}"
+    done
+}
+
+# Main monitoring loop
+while true; do
+    clear
+    echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+    echo -e "${cor1}🦁              CONNECTION MONITOR - LION MANAGER         🦁${sem}"
+    echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+    echo ""
+    
+    # Real-time stats
+    ssh_connections=$(get_ssh_connections)
+    tls_connections=$(get_tls_connections)
+    current_time=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    echo -e "${cor2}🕒 Current Time: ${cor5}$current_time${sem}"
+    echo -e "${cor2}🔐 TLS Cipher: ${cor5}TLS_AES_256_GCM_SHA384${sem}"
+    echo -e "${cor4}🦁 Active SSH Sessions: ${cor5}$ssh_connections${sem}"
+    echo -e "${cor4}🔒 Active TLS Connections: ${cor5}$tls_connections${sem}"
+    echo ""
+    
+    # Menu options
+    echo -e "${cor2}📊 Monitoring Options:${sem}"
+    echo -e "${cor3}[1]${cor5} View Active Sessions${sem}"
+    echo -e "${cor3}[2]${cor5} Network Statistics${sem}"
+    echo -e "${cor3}[3]${cor5} User Limit Monitor${sem}"
+    echo -e "${cor3}[4]${cor5} Process Information${sem}"
+    echo -e "${cor3}[5]${cor5} Auto-refresh (5s)${sem}"
+    echo -e "${cor3}[6]${cor5} Kill User Session${sem}"
+    echo -e "${cor3}[0]${cor5} Return to Menu${sem}"
+    echo ""
+    echo -ne "${cor2}🦁 Select option [0-6]: ${cor5}"
+    read -t 10 opcao
+    
+    case "$opcao" in
+        1)
+            clear
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo -e "${cor1}🦁                    ACTIVE SESSIONS                     🦁${sem}"
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo ""
+            get_user_details
+            echo ""
+            echo -ne "${cor2}🦁 Press Enter to continue...${sem}"
+            read
+            ;;
+        2)
+            clear
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo -e "${cor1}🦁                 NETWORK STATISTICS                     🦁${sem}"
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo ""
+            get_network_stats
+            echo ""
+            echo -ne "${cor2}🦁 Press Enter to continue...${sem}"
+            read
+            ;;
+        3)
+            clear
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo -e "${cor1}🦁                   USER MONITORING                      🦁${sem}"
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo ""
+            monitor_users
+            echo ""
+            echo -ne "${cor2}🦁 Press Enter to continue...${sem}"
+            read
+            ;;
+        4)
+            clear
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo -e "${cor1}🦁                 PROCESS INFORMATION                    🦁${sem}"
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo ""
+            show_processes
+            echo ""
+            echo -ne "${cor2}🦁 Press Enter to continue...${sem}"
+            read
+            ;;
+        5)
+            echo -e "${cor2}🔄 Auto-refresh enabled (Press Ctrl+C to stop)...${sem}"
+            sleep 2
+            while true; do
+                clear
+                echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+                echo -e "${cor1}🦁          AUTO-REFRESH CONNECTION MONITOR             🦁${sem}"
+                echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+                echo ""
+                
+                current_time=$(date '+%Y-%m-%d %H:%M:%S')
+                ssh_connections=$(get_ssh_connections)
+                tls_connections=$(get_tls_connections)
+                
+                echo -e "${cor2}🕒 Time: ${cor5}$current_time${sem}"
+                echo -e "${cor4}🦁 SSH Sessions: ${cor5}$ssh_connections${sem}"
+                echo -e "${cor4}🔒 TLS Connections: ${cor5}$tls_connections${sem}"
+                echo ""
+                
+                get_user_details
+                echo ""
+                get_network_stats
+                echo ""
+                echo -e "${cor3}Press Ctrl+C to stop auto-refresh${sem}"
+                
+                sleep 5
+            done
+            ;;
+        6)
+            clear
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo -e "${cor1}🦁                   KILL USER SESSION                    🦁${sem}"
+            echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+            echo ""
+            
+            echo -e "${cor2}👥 Active Users:${sem}"
+            who | awk '{print $1}' | sort | uniq -c | while read count user; do
+                echo -e "${cor5}$user (${cor2}$count sessions${cor5})${sem}"
+            done
+            echo ""
+            
+            echo -ne "${cor2}🦁 Enter username to disconnect: ${cor5}"
+            read kill_user
+            
+            if [ -n "$kill_user" ]; then
+                echo -ne "${cor3}⚠️ Kill all sessions for $kill_user? [y/N]: ${cor5}"
+                read confirm
+                
+                if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                    pkill -u "$kill_user" 2>/dev/null
+                    echo -e "${cor4}✅ Sessions for $kill_user terminated!${sem}"
+                else
+                    echo -e "${cor2}❌ Operation cancelled.${sem}"
+                fi
+            fi
+            echo ""
+            echo -ne "${cor2}🦁 Press Enter to continue...${sem}"
+            read
+            ;;
+        0)
+            exit 0
+            ;;
+        *)
+            # Auto-refresh with no input
+            sleep 1
+            ;;
+    esac
+done

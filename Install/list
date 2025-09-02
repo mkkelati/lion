@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# LION VPS Manager - Installation List
+# TLS_AES_256_GCM_SHA384 Enhanced Installation
+
+echo "LION VPS Manager Installation Components"
+echo "========================================"
+echo ""
+echo "Security: TLS_AES_256_GCM_SHA384"
+echo "Version: 2.0.0-LION-TLS"
+echo "Protocol: Stunnel with TLSv1.3"
+echo ""
+
+# Create essential modules directory structure
+mkdir -p /etc/lion/{install,modulos,sistema}
+mkdir -p /var/log/lion
+mkdir -p /etc/stunnel
+
+# Core installation components
+_pacotes=("bc" "apache2" "cron" "screen" "nano" "unzip" "lsof" "netstat" "net-tools" "dos2unix" "nload" "jq" "curl" "figlet" "python3" "python3-pip" "stunnel4" "openssl" "ssl-cert" "ca-certificates")
+
+for _prog in ${_pacotes[@]}; do
+    apt install $_prog -y
+done
+
+# Install Python security modules
+pip3 install speedtest-cli cryptography
+
+# Copy modules to system
+cp -r Modulos/* /etc/lion/modulos/
+chmod +x /etc/lion/modulos/*
+
+# Create main command links
+echo "/etc/lion/modulos/menu" > /bin/lion && chmod +x /bin/lion
+echo "/etc/lion/modulos/menu" > /bin/l && chmod +x /bin/l
+echo "/etc/lion/modulos/menu" > /bin/lionmenu && chmod +x /bin/lionmenu
+
+# Set version info
+echo "LION-v2.0.0-TLS_AES_256_GCM_SHA384" > /etc/lion/sistema/versao
+echo "TLS_AES_256_GCM_SHA384" > /etc/lion/sistema/cipher
+echo "$(date)" > /etc/lion/sistema/install_date
+
+# Configure firewall for TLS ports
+if [ -f "/usr/sbin/ufw" ]; then
+    ufw allow 443/tcp   # HTTPS/TLS
+    ufw allow 22/tcp    # SSH
+    ufw allow 80/tcp    # HTTP
+    ufw allow 8443/tcp  # Custom TLS port
+    ufw allow 9443/tcp  # Stunnel TLS port
+    ufw allow 7443/tcp  # VPN TLS port
+    ufw --force enable
+fi
+
+echo "LION VPS Manager installation completed successfully!"
+echo "TLS_AES_256_GCM_SHA384 security protocol activated!"

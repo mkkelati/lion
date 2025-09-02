@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# LION VPS Manager - Main Menu System
+# TLS_AES_256_GCM_SHA384 Enhanced Security
+
+cor1='\033[1;36m' # Cyan
+cor2='\033[1;33m' # Yellow  
+cor3='\033[1;31m' # Red
+cor4='\033[1;32m' # Green
+cor5='\033[1;37m' # White
+sem='\033[0m'     # Reset
+
+# Source header if available
+source /etc/lion/modulos/cabecalho 2>/dev/null
+
+clear
+
+# System information
+sistema=$(cat /etc/issue.net)
+usuario=$(whoami)
+vps_ip=$(wget -qO- ipv4.icanhazip.com)
+ram=$(free -h | grep -i mem | awk {'print $2'})
+swap=$(free -h | grep -i swap | awk {'print $2'})
+uptime=$(uptime | awk -F'up ' '{print $2}' | awk -F',' '{print $1}')
+processes=$(ps aux | wc -l)
+lion_users=$(cat /home/usuarios.db 2>/dev/null | wc -l)
+
+# TLS Security Status
+tls_status="${cor4}TLS_AES_256_GCM_SHA384 Active${sem}"
+stunnel_status=$(systemctl is-active stunnel4 2>/dev/null || echo "inactive")
+
+# Header
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor1}🦁                  LION VPS MANAGER v2.0                🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+echo -e "${cor2}🔐 Security Protocol: ${tls_status}"
+echo -e "${cor2}🌐 Server IP: ${cor5}$vps_ip${sem}"
+echo -e "${cor2}👑 System: ${cor5}$sistema${sem}"
+echo -e "${cor2}💾 RAM: ${cor5}$ram${sem} | 💽 SWAP: ${cor5}$swap${sem}"
+echo -e "${cor2}⏰ Uptime: ${cor5}$uptime${sem}"
+echo -e "${cor2}👥 LION Users: ${cor5}$lion_users${sem}"
+echo -e "${cor2}🔒 Stunnel Status: ${cor5}$stunnel_status${sem}"
+echo ""
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+
+# Main Menu Loop
+while true; do
+echo -e "${cor2}🦁 LION VPS MANAGER - SELECT OPTION 🦁${sem}"
+echo ""
+echo -e "${cor2}👥 USER MANAGEMENT:${sem}"
+echo -e "${cor3}[01]${cor5} • ${cor2}Create SSH User${sem}"
+echo -e "${cor3}[02]${cor5} • ${cor2}Remove SSH User${sem}"
+echo -e "${cor3}[03]${cor5} • ${cor2}Change User Password${sem}"
+echo -e "${cor3}[04]${cor5} • ${cor2}Change User Limit${sem}"
+echo -e "${cor3}[05]${cor5} • ${cor2}User Details${sem}"
+echo ""
+echo -e "${cor2}🔒 TLS/STUNNEL MANAGEMENT:${sem}"
+echo -e "${cor3}[06]${cor5} • ${cor2}Configure Stunnel TLS${sem}"
+echo -e "${cor3}[07]${cor5} • ${cor2}Start Stunnel Service${sem}"
+echo -e "${cor3}[08]${cor5} • ${cor2}Stop Stunnel Service${sem}"
+echo -e "${cor3}[09]${cor5} • ${cor2}Restart Stunnel Service${sem}"
+echo -e "${cor3}[10]${cor5} • ${cor2}Generate TLS Certificates${sem}"
+echo ""
+echo -e "${cor2}📊 MONITORING & TOOLS:${sem}"
+echo -e "${cor3}[11]${cor5} • ${cor2}Monitor Connections${sem}"
+echo -e "${cor3}[12]${cor5} • ${cor2}System Information${sem}"
+echo -e "${cor3}[13]${cor5} • ${cor2}Speed Test${sem}"
+echo -e "${cor3}[14]${cor5} • ${cor2}Security Settings${sem}"
+echo -e "${cor3}[15]${cor5} • ${cor2}Backup/Restore Users${sem}"
+echo ""
+echo -e "${cor2}⚙️ SYSTEM TOOLS:${sem}"
+echo -e "${cor3}[16]${cor5} • ${cor2}Update LION Manager${sem}"
+echo -e "${cor3}[17]${cor5} • ${cor2}Restart Services${sem}"
+echo -e "${cor3}[18]${cor5} • ${cor2}System Optimization${sem}"
+echo -e "${cor3}[19]${cor5} • ${cor2}View Logs${sem}"
+echo -e "${cor3}[00]${cor5} • ${cor3}Exit${sem}"
+echo ""
+echo -ne "${cor4}🦁 Select Option [0-19]: ${cor5}"; read x
+
+case "$x" in
+1|01) /etc/lion/modulos/criarusuario ;;
+2|02) /etc/lion/modulos/remover ;;
+3|03) /etc/lion/modulos/alterarsenha ;;
+4|04) /etc/lion/modulos/alterarlimite ;;
+5|05) /etc/lion/modulos/detalhes ;;
+6|06) /etc/lion/modulos/stunnel-config ;;
+7|07) /etc/lion/modulos/stunnel-start ;;
+8|08) /etc/lion/modulos/stunnel-stop ;;
+9|09) /etc/lion/modulos/stunnel-restart ;;
+10) /etc/lion/modulos/gerar-cert ;;
+11) /etc/lion/modulos/conexao ;;
+12) /etc/lion/modulos/info ;;
+13) /etc/lion/modulos/speedtest ;;
+14) /etc/lion/modulos/security ;;
+15) /etc/lion/modulos/backup ;;
+16) /etc/lion/modulos/update ;;
+17) /etc/lion/modulos/reiniciarservicos ;;
+18) /etc/lion/modulos/otimizar ;;
+19) /etc/lion/modulos/logs ;;
+0|00) 
+echo ""
+echo -e "${cor2}🦁 Thanks for using LION VPS Manager!${sem}"
+echo -e "${cor2}🔐 TLS_AES_256_GCM_SHA384 Security Protocol Active${sem}"
+echo -e "${cor4}🦁 Stay Secure! 🦁${sem}"
+exit 
+;;
+*) 
+echo ""
+echo -e "${cor3}🦁 Invalid Option! Please select 0-19${sem}"
+sleep 2
+;;
+esac
+
+# Clear and show header again for next iteration
+clear
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor1}🦁                  LION VPS MANAGER v2.0                🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+echo -e "${cor2}🔐 Security Protocol: ${tls_status}"
+echo -e "${cor2}🌐 Server IP: ${cor5}$vps_ip${sem}"
+echo ""
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+
+done

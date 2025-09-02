@@ -1,0 +1,217 @@
+#!/bin/bash
+
+# LION VPS Manager - Remove SSH User Module
+# Enhanced with TLS_AES_256_GCM_SHA384 security
+
+cor1='\033[1;36m' # Cyan
+cor2='\033[1;33m' # Yellow  
+cor3='\033[1;31m' # Red
+cor4='\033[1;32m' # Green
+cor5='\033[1;37m' # White
+sem='\033[0m'     # Reset
+
+clear
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor1}🦁              REMOVE SSH USER - LION MANAGER            🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+
+# Check if users database exists
+if [ ! -f "/root/usuarios.db" ]; then
+    echo -e "${cor3}❌ User database not found!${sem}"
+    echo -e "${cor2}🦁 No users to remove.${sem}"
+    echo ""
+    echo -ne "${cor2}🦁 Press Enter to return to menu...${sem}"
+    read
+    exit 1
+fi
+
+# Show existing users
+echo -e "${cor2}👥 Current LION Users:${sem}"
+echo ""
+printf "${cor2}%-15s %-10s %-20s${sem}\n" "USERNAME" "LIMIT" "STATUS"
+echo -e "${cor2}──────────────────────────────────────────────${sem}"
+
+while read user limit; do
+    # Check if user exists in system
+    if id "$user" &>/dev/null; then
+        status="${cor4}Active${sem}"
+        # Check if user is currently logged in
+        if who | grep -q "$user"; then
+            status="${cor3}Online${sem}"
+        fi
+    else
+        status="${cor3}Missing${sem}"
+    fi
+    
+    printf "${cor5}%-15s ${cor2}%-10s %-20s${sem}\n" "$user" "$limit" "$status"
+done < /root/usuarios.db
+
+echo ""
+
+# Input username to remove
+while true; do
+    echo -ne "${cor2}🦁 Enter username to remove: ${cor5}"
+    read username
+    
+    if [ -z "$username" ]; then
+        echo -e "${cor3}❌ Username cannot be empty!${sem}"
+        continue
+    fi
+    
+    # Check if user exists in database
+    if ! grep -q "^$username " /root/usuarios.db; then
+        echo -e "${cor3}❌ User $username not found in LION database!${sem}"
+        echo -ne "${cor2}🦁 Try again? [y/N]: ${cor5}"
+        read retry
+        if [[ ! "$retry" =~ ^[Yy]$ ]]; then
+            exit 0
+        fi
+        continue
+    fi
+    
+    break
+done
+
+echo ""
+
+# Show user details
+echo -e "${cor2}📋 User Details:${sem}"
+user_limit=$(grep "^$username " /root/usuarios.db | awk '{print $2}')
+echo -e "${cor2}👤 Username: ${cor5}$username${sem}"
+echo -e "${cor2}🔢 Limit: ${cor5}$user_limit${sem}"
+
+# Check if user exists in system
+if id "$username" &>/dev/null; then
+    echo -e "${cor2}💾 System User: ${cor4}Exists${sem}"
+    
+    # Check if user is logged in
+    active_sessions=$(who | grep "$username" | wc -l)
+    if [ "$active_sessions" -gt 0 ]; then
+        echo -e "${cor2}🔌 Active Sessions: ${cor3}$active_sessions${sem}"
+        echo -e "${cor3}⚠️ User is currently online!${sem}"
+    else
+        echo -e "${cor2}🔌 Active Sessions: ${cor4}0${sem}"
+    fi
+    
+    # Show user's home directory
+    user_home=$(getent passwd "$username" | cut -d: -f6)
+    if [ -d "$user_home" ]; then
+        echo -e "${cor2}🏠 Home Directory: ${cor5}$user_home${sem}"
+    fi
+else
+    echo -e "${cor2}💾 System User: ${cor3}Not found${sem}"
+fi
+
+echo ""
+
+# Removal options
+echo -e "${cor2}🗑️ Removal Options:${sem}"
+echo -e "${cor3}[1]${cor5} Remove from LION database only${sem}"
+echo -e "${cor3}[2]${cor5} Remove system user only${sem}"
+echo -e "${cor3}[3]${cor5} Complete removal (database + system + home)${sem}"
+echo -e "${cor3}[4]${cor5} Force removal (kill sessions + complete removal)${sem}"
+echo -e "${cor3}[0]${cor5} Cancel${sem}"
+echo ""
+echo -ne "${cor2}🦁 Select option [0-4]: ${cor5}"
+read opcao
+
+case "$opcao" in
+    1)
+        echo ""
+        echo -e "${cor2}🔄 Removing from LION database...${sem}"
+        sed -i "/^$username /d" /root/usuarios.db
+        echo -e "${cor4}✅ User removed from database!${sem}"
+        ;;
+    2)
+        if id "$username" &>/dev/null; then
+            echo ""
+            echo -e "${cor2}🔄 Removing system user...${sem}"
+            userdel "$username" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${cor4}✅ System user removed!${sem}"
+            else
+                echo -e "${cor3}❌ Error removing system user!${sem}"
+            fi
+        else
+            echo -e "${cor3}❌ System user doesn't exist!${sem}"
+        fi
+        ;;
+    3)
+        echo ""
+        echo -ne "${cor3}⚠️ COMPLETE REMOVAL - Are you sure? [y/N]: ${cor5}"
+        read confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            echo -e "${cor2}🔄 Complete removal in progress...${sem}"
+            
+            # Remove from database
+            sed -i "/^$username /d" /root/usuarios.db
+            echo -e "${cor4}✅ Removed from database${sem}"
+            
+            # Remove system user with home directory
+            if id "$username" &>/dev/null; then
+                userdel -r "$username" 2>/dev/null
+                if [ $? -eq 0 ]; then
+                    echo -e "${cor4}✅ System user and home directory removed${sem}"
+                else
+                    echo -e "${cor3}⚠️ System user removed, but home directory may remain${sem}"
+                fi
+            fi
+            
+            echo -e "${cor4}🦁 Complete removal finished!${sem}"
+        else
+            echo -e "${cor3}❌ Complete removal cancelled.${sem}"
+        fi
+        ;;
+    4)
+        echo ""
+        echo -ne "${cor3}⚠️ FORCE REMOVAL - This will kill active sessions! Continue? [y/N]: ${cor5}"
+        read confirm
+        
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            echo -e "${cor2}🔄 Force removal in progress...${sem}"
+            
+            # Kill all user sessions
+            if who | grep -q "$username"; then
+                echo -e "${cor2}💀 Killing active sessions...${sem}"
+                pkill -u "$username" 2>/dev/null
+                sleep 2
+                echo -e "${cor4}✅ Sessions terminated${sem}"
+            fi
+            
+            # Remove from database
+            sed -i "/^$username /d" /root/usuarios.db
+            echo -e "${cor4}✅ Removed from database${sem}"
+            
+            # Force remove system user
+            if id "$username" &>/dev/null; then
+                userdel -r -f "$username" 2>/dev/null
+                echo -e "${cor4}✅ System user forcefully removed${sem}"
+            fi
+            
+            echo -e "${cor4}🦁 Force removal completed!${sem}"
+        else
+            echo -e "${cor3}❌ Force removal cancelled.${sem}"
+        fi
+        ;;
+    0)
+        echo -e "${cor3}❌ Removal cancelled.${sem}"
+        ;;
+    *)
+        echo -e "${cor3}❌ Invalid option!${sem}"
+        ;;
+esac
+
+# Log the removal
+if [ "$opcao" != "0" ] && [[ "$confirm" =~ ^[Yy]$ || "$opcao" = "1" || "$opcao" = "2" ]]; then
+    echo "$(date) - User $username removed via LION Manager (Option: $opcao)" >> /var/log/lion/users.log
+fi
+
+echo ""
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor4}🦁 USER REMOVAL COMPLETED WITH TLS_AES_256_GCM_SHA384 🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+echo -ne "${cor2}🦁 Press Enter to return to menu...${sem}"
+read

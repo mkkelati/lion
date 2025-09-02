@@ -1,0 +1,209 @@
+#!/bin/bash
+
+# LION VPS Manager - Create SSH User Module
+# Enhanced with TLS_AES_256_GCM_SHA384 security
+
+cor1='\033[1;36m' # Cyan
+cor2='\033[1;33m' # Yellow  
+cor3='\033[1;31m' # Red
+cor4='\033[1;32m' # Green
+cor5='\033[1;37m' # White
+sem='\033[0m'     # Reset
+
+clear
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo -e "${cor1}🦁              CREATE SSH USER - LION MANAGER           🦁${sem}"
+echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+echo ""
+
+# Function to generate random password
+gerar_senha() {
+    openssl rand -base64 8 | tr -d "=+/" | cut -c1-8
+}
+
+# Function to validate username
+validar_usuario() {
+    if [[ ! "$1" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        return 1
+    fi
+    if [ ${#1} -lt 3 ] || [ ${#1} -gt 32 ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Input username
+while true; do
+    echo -ne "${cor2}🦁 Enter Username: ${cor5}"
+    read username
+    
+    if [ -z "$username" ]; then
+        echo -e "${cor3}❌ Username cannot be empty!${sem}"
+        continue
+    fi
+    
+    if ! validar_usuario "$username"; then
+        echo -e "${cor3}❌ Invalid username! Use 3-32 chars, only letters, numbers, _ and -${sem}"
+        continue
+    fi
+    
+    if id "$username" &>/dev/null; then
+        echo -e "${cor3}❌ User $username already exists!${sem}"
+        continue
+    fi
+    
+    break
+done
+
+echo ""
+
+# Password options
+echo -e "${cor2}🔐 Password Options:${sem}"
+echo -e "${cor3}[1]${cor5} Generate automatic password${sem}"
+echo -e "${cor3}[2]${cor5} Set custom password${sem}"
+echo ""
+echo -ne "${cor2}🦁 Select option [1-2]: ${cor5}"
+read senha_opcao
+
+case "$senha_opcao" in
+    1)
+        senha=$(gerar_senha)
+        echo -e "${cor4}🔑 Generated password: ${cor5}$senha${sem}"
+        ;;
+    2)
+        while true; do
+            echo -ne "${cor2}🔑 Enter password: ${cor5}"
+            read -s senha
+            echo ""
+            
+            if [ -z "$senha" ]; then
+                echo -e "${cor3}❌ Password cannot be empty!${sem}"
+                continue
+            fi
+            
+            if [ ${#senha} -lt 4 ]; then
+                echo -e "${cor3}❌ Password must be at least 4 characters!${sem}"
+                continue
+            fi
+            
+            echo -ne "${cor2}🔑 Confirm password: ${cor5}"
+            read -s senha_confirm
+            echo ""
+            
+            if [ "$senha" != "$senha_confirm" ]; then
+                echo -e "${cor3}❌ Passwords don't match!${sem}"
+                continue
+            fi
+            
+            break
+        done
+        ;;
+    *)
+        echo -e "${cor3}❌ Invalid option! Using auto-generated password.${sem}"
+        senha=$(gerar_senha)
+        echo -e "${cor4}🔑 Generated password: ${cor5}$senha${sem}"
+        ;;
+esac
+
+echo ""
+
+# Connection limit
+echo -ne "${cor2}🔢 Enter connection limit (default: 1): ${cor5}"
+read limite
+if [[ ! "$limite" =~ ^[0-9]+$ ]] || [ "$limite" -lt 1 ] || [ "$limite" -gt 100 ]; then
+    limite=1
+    echo -e "${cor3}⚠️ Invalid limit! Using default: 1${sem}"
+fi
+
+echo ""
+
+# Expiry date
+echo -e "${cor2}📅 Set expiry date:${sem}"
+echo -e "${cor3}[1]${cor5} 30 days${sem}"
+echo -e "${cor3}[2]${cor5} 60 days${sem}"
+echo -e "${cor3}[3]${cor5} 90 days${sem}"
+echo -e "${cor3}[4]${cor5} Custom date${sem}"
+echo ""
+echo -ne "${cor2}🦁 Select option [1-4]: ${cor5}"
+read data_opcao
+
+case "$data_opcao" in
+    1) valid=$(date -d "+30 days" +%Y-%m-%d) ;;
+    2) valid=$(date -d "+60 days" +%Y-%m-%d) ;;
+    3) valid=$(date -d "+90 days" +%Y-%m-%d) ;;
+    4)
+        while true; do
+            echo -ne "${cor2}📅 Enter date (YYYY-MM-DD): ${cor5}"
+            read valid
+            if date -d "$valid" &>/dev/null; then
+                break
+            else
+                echo -e "${cor3}❌ Invalid date format!${sem}"
+            fi
+        done
+        ;;
+    *)
+        valid=$(date -d "+30 days" +%Y-%m-%d)
+        echo -e "${cor3}⚠️ Invalid option! Using 30 days.${sem}"
+        ;;
+esac
+
+echo ""
+echo -e "${cor2}📋 USER SUMMARY:${sem}"
+echo -e "${cor2}👤 Username: ${cor5}$username${sem}"
+echo -e "${cor2}🔑 Password: ${cor5}$senha${sem}"
+echo -e "${cor2}🔢 Limit: ${cor5}$limite${sem}"
+echo -e "${cor2}📅 Expires: ${cor5}$valid${sem}"
+echo ""
+echo -ne "${cor2}🦁 Confirm creation? [y/N]: ${cor5}"
+read confirmacao
+
+if [[ "$confirmacao" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo -e "${cor2}🔄 Creating user...${sem}"
+    
+    # Create user
+    useradd -M -N -s /bin/false "$username" -e $(date -d "$valid" +%Y-%m-%d) 2>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        # Set password
+        echo "$username:$senha" | chpasswd
+        
+        # Add to database
+        echo "$username $limite" >> /root/usuarios.db
+        
+        # Log creation with TLS info
+        echo "$(date) - User $username created with TLS_AES_256_GCM_SHA384 access" >> /var/log/lion/users.log
+        
+        echo -e "${cor4}✅ User created successfully!${sem}"
+        echo ""
+        echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+        echo -e "${cor4}🎉 USER CREATED WITH TLS_AES_256_GCM_SHA384 SECURITY! 🎉${sem}"
+        echo -e "${cor1}🦁════════════════════════════════════════════════════════🦁${sem}"
+        echo ""
+        echo -e "${cor2}📋 Connection Details:${sem}"
+        echo -e "${cor2}🌐 Server: ${cor5}$(wget -qO- ipv4.icanhazip.com)${sem}"
+        echo -e "${cor2}🔌 SSH Port: ${cor5}22${sem}"
+        echo -e "${cor2}🔒 TLS Port: ${cor5}9443 (Stunnel)${sem}"
+        echo -e "${cor2}👤 Username: ${cor5}$username${sem}"
+        echo -e "${cor2}🔑 Password: ${cor5}$senha${sem}"
+        echo -e "${cor2}🔢 Limit: ${cor5}$limite connection(s)${sem}"
+        echo -e "${cor2}📅 Valid until: ${cor5}$valid${sem}"
+        echo -e "${cor2}🔐 Cipher: ${cor5}TLS_AES_256_GCM_SHA384${sem}"
+        echo ""
+        echo -e "${cor4}🦁 LION TLS Connection Commands:${sem}"
+        echo -e "${cor5}SSH Direct: ssh $username@$(wget -qO- ipv4.icanhazip.com)${sem}"
+        echo -e "${cor5}Stunnel TLS: Connect to port 9443 with TLS client${sem}"
+        echo ""
+        
+    else
+        echo -e "${cor3}❌ Error creating user!${sem}"
+        echo -e "${cor3}🦁 Please check system logs for details.${sem}"
+    fi
+else
+    echo -e "${cor3}❌ User creation cancelled.${sem}"
+fi
+
+echo ""
+echo -ne "${cor2}🦁 Press Enter to return to menu...${sem}"
+read
