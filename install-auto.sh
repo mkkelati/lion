@@ -144,10 +144,11 @@ show_success "LION commands installed"
 show_progress "Configuring SSH with TLS security"
 if ! $SUDO_CMD grep -q "LION VPS Manager" /etc/ssh/sshd_config 2>/dev/null; then
     echo "" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
-    echo "# LION VPS Manager - TLS Security Enhancements" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
-    echo "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
-    echo "MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
-    echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
+    echo "# LION VPS Manager - HTTP Injector Compatible Security" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
+    echo "# Enhanced cipher support for HTTP Injector compatibility" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
+    echo "Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr,aes256-cbc,aes192-cbc,aes128-cbc,3des-cbc" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
+    echo "MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512,hmac-sha1" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
+    echo "KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256,diffie-hellman-group14-sha1" | $SUDO_CMD tee -a /etc/ssh/sshd_config >/dev/null
 fi
 
 # Enable password authentication
@@ -188,6 +189,14 @@ options = -NO_SSLv3
 options = -NO_TLSv1
 options = -NO_TLSv1.1
 options = -NO_TLSv1.2
+options = -NO_COMPRESSION
+options = -CIPHER_SERVER_PREFERENCE
+options = -SINGLE_DH_USE
+options = -SINGLE_ECDH_USE
+options = -NO_RENEGOTIATION
+
+; HTTP Injector compatibility - NO client certificate verification
+verify = 0
 
 [lion-ssh]
 accept = 9443
