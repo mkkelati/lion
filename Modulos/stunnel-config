@@ -63,6 +63,7 @@ case "$config_mode" in
         cat > /etc/stunnel/lion.conf << 'EOF'
 ; LION VPS Manager - Stunnel Configuration
 ; TLS_AES_256_GCM_SHA384 Cipher Suite Enforcement
+; HTTP Injector Compatible Configuration
 
 pid = /var/run/stunnel-lion.pid
 output = /var/log/lion/stunnel.log
@@ -85,9 +86,9 @@ options = -SINGLE_DH_USE
 options = -SINGLE_ECDH_USE
 options = -NO_RENEGOTIATION
 
-; Certificate verification
-verify = 2
-CAfile = /etc/ssl/certs/ca-certificates.crt
+; HTTP Injector compatibility - NO client certificate verification
+verify = 0
+; CAfile = /etc/ssl/certs/ca-certificates.crt
 
 ; Service definitions
 [lion-ssh]
@@ -162,6 +163,7 @@ EOF
         cat > /etc/stunnel/lion.conf << EOF
 ; LION VPS Manager - Advanced Stunnel Configuration
 ; TLS_AES_256_GCM_SHA384 Cipher Suite Enforcement
+; HTTP Injector Compatible Configuration
 
 pid = /var/run/stunnel-lion.pid
 output = /var/log/lion/stunnel.log
@@ -183,9 +185,9 @@ options = -SINGLE_DH_USE
 options = -SINGLE_ECDH_USE
 options = -NO_RENEGOTIATION
 
-; Certificate verification
-verify = 2
-CAfile = /etc/ssl/certs/ca-certificates.crt
+; HTTP Injector compatibility - NO client certificate verification
+verify = 0
+; CAfile = /etc/ssl/certs/ca-certificates.crt
 
 [lion-ssh]
 accept = $tls_port
